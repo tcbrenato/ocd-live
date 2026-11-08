@@ -35,24 +35,28 @@ const AFRICA_IDS = new Set([
   '788', '800', '894', '716', '732',
 ]);
 
-const isAfricanId = (id: string) => AFRICA_IDS.has(id) || AFRICAN_ISO_SET.has(id);
+const isAfricanId = (id: string, name?: string) => 
+  AFRICA_IDS.has(id) || AFRICAN_ISO_SET.has(id) || name === 'Togo' || name === 'Cameroon';
 
 // Territoires sans identifiant dans la carte du monde
 const ID_FALLBACK_BY_NAME: Record<string, string> = {
-  Somaliland: '706', // fait partie de la Somalie
+  Somaliland: '706',
+  Togo: TOGO_ISO, // Force l'ISO correct du Togo si le nom correspond
 };
 
 // Antarctique : masqué
 const HIDDEN_IDS = new Set(['010']);
 
 function getFeatureId(f: Feature<Geometry, CountryProps>): string {
-  if (f.id !== undefined && f.id !== null) return String(f.id);
   const name = f.properties?.name ?? '';
+  if (name === 'Togo') return TOGO_ISO; // Sécurité absolue pour le Togo
+  if (f.id !== undefined && f.id !== null) return String(f.id);
   return ID_FALLBACK_BY_NAME[name] ?? '';
 }
 
 // Nom français si disponible, sinon nom de la carte
 function getLabel(id: string, fallback: string): string {
+  if (id === TOGO_ISO || fallback === 'Togo') return 'Togo';
   const fr = getCountryNameFR(id);
   return fr && fr !== id ? fr : fallback || id;
 }
@@ -69,7 +73,7 @@ function CountryFeature({
 }: CountryFeatureProps) {
   if (!pathD) return null;
 
-  let fill = '#1F242D'; // Reste du monde très sombre
+  let fill = '#1F242D'; // Reste du monde
   if (isAfrican) fill = '#E2DDD5'; // Sable doux pour l'Afrique
   if (isTogo) fill = '#F26A04'; // Togo en orange signature OCD
   if (isSelected) fill = '#FF8226'; // Sélectionné en orange lumineux
@@ -116,7 +120,7 @@ export default function AfricaMap({ selectedIso, onSelect }: AfricaMapProps) {
     return () => clearInterval(interval);
   }, []);
 
-  // Largeur responsive du conteneur de carte
+  // Largeur responsive
   useEffect(() => {
     if (!containerRef.current) return;
     const observer = new ResizeObserver((entries) => {
@@ -139,7 +143,7 @@ export default function AfricaMap({ selectedIso, onSelect }: AfricaMapProps) {
 
     const all = fc.features.filter((f) => !HIDDEN_IDS.has(getFeatureId(f)));
 
-    const africanFeatures = all.filter((f) => isAfricanId(getFeatureId(f)));
+    const africanFeatures = all.filter((f) => isAfricanId(getFeatureId(f), f.properties?.name));
     const collection: FeatureCollection<Geometry, CountryProps> = {
       type: 'FeatureCollection',
       features: africanFeatures,
@@ -166,8 +170,9 @@ export default function AfricaMap({ selectedIso, onSelect }: AfricaMapProps) {
     const map = new Map<string, string>();
     for (const f of features) {
       const id = getFeatureId(f);
-      if (!id || !isAfricanId(id) || map.has(id)) continue;
-      map.set(id, getLabel(id, f.properties?.name ?? ''));
+      const name = f.properties?.name;
+      if (!id || !isAfricanId(id, name) || map.has(id)) continue;
+      map.set(id, getLabel(id, name ?? ''));
     }
     const collator = new Intl.Collator('fr', { sensitivity: 'base' });
     return Array.from(map, ([iso, label]) => ({ iso, label })).sort((a, b) =>
@@ -184,10 +189,9 @@ export default function AfricaMap({ selectedIso, onSelect }: AfricaMapProps) {
 
   return (
     <div className="w-full">
-      {/* Grille principale 2 colonnes sur grand écran */}
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:items-start">
         
-        {/* Colonne Gauche : La carte interactive (7 colonnes) */}
+        {/* Colonne Gauche : Carte interactive */}
         <div className="lg:col-span-7 flex flex-col">
           <div className="mb-3 flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-ocd-anthracite/60">
@@ -212,16 +216,18 @@ export default function AfricaMap({ selectedIso, onSelect }: AfricaMapProps) {
             >
               {features.map((f: Feature<Geometry, CountryProps>, index: number) => {
                 const id = getFeatureId(f);
-                const isAfrican = isAfricanId(id);
-                const isTogo = id === TOGO_ISO;
-                const isSelected = id !== '' && id === selectedIso;
+                const name = f.properties?.name;
+                const isAfrican = isAfricanId(id, name);
+                const isTogo = id === TOGO_ISO || name === 'Togo';
+                const isSelected = (id !== '' && id === selectedIso) || (selectedIso === TOGO_ISO && isTogo);
                 const pathD = pathGen(f) ?? '';
-                const name = getLabel(id, f.properties?.name ?? '');
+                const countryName = getLabel(id, name ?? '');
+                
                 return (
                   <CountryFeature
                     key={`${id || 'x'}-${index}`}
-                    id={id}
-                    name={name}
+                    id={id === '' && name === 'Togo' ? TOGO_ISO : id}
+                    name={countryName}
                     isAfrican={isAfrican}
                     isTogo={isTogo}
                     isSelected={isSelected}
@@ -235,10 +241,8 @@ export default function AfricaMap({ selectedIso, onSelect }: AfricaMapProps) {
           </div>
         </div>
 
-        {/* Colonne Droite : Sélection et Fiche Pays (5 colonnes) */}
+        {/* Colonne Droite : Sélection et Fiche Pays */}
         <div className="lg:col-span-5 flex flex-col gap-6">
-          
-          {/* Bloc de sélection par menu déroulant */}
           <div className="rounded-2xl border border-ocd-line/80 bg-white p-5 shadow-sm">
             <label
               htmlFor="country-select"
@@ -274,9 +278,7 @@ export default function AfricaMap({ selectedIso, onSelect }: AfricaMapProps) {
             </div>
           </div>
 
-          {/* Fiche Pays Dynamique */}
           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1A1E29] to-[#12151B] p-6 text-white shadow-xl ring-1 ring-white/10">
-            {/* Effet lumineux d'ambiance */}
             <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-ocd-orange/15 blur-2xl" />
 
             {activeName ? (
@@ -324,7 +326,6 @@ export default function AfricaMap({ selectedIso, onSelect }: AfricaMapProps) {
               </div>
             )}
           </div>
-
         </div>
 
       </div>
