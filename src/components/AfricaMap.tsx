@@ -69,13 +69,13 @@ function CountryFeature({
 }: CountryFeatureProps) {
   if (!pathD) return null;
 
-  let fill = '#2A2A2A'; // reste du monde
-  if (isAfrican) fill = '#E6E0D8'; // sable
-  if (isTogo) fill = '#F26A04'; // Togo en orange
-  if (isSelected) fill = '#FF8226'; // sélectionné
+  let fill = '#1F242D'; // Reste du monde très sombre
+  if (isAfrican) fill = '#E2DDD5'; // Sable doux pour l'Afrique
+  if (isTogo) fill = '#F26A04'; // Togo en orange signature OCD
+  if (isSelected) fill = '#FF8226'; // Sélectionné en orange lumineux
 
-  const stroke = isSelected || isTogo ? '#FFFFFF' : isAfrican ? '#3A3A3A' : '#333333';
-  const strokeWidth = isSelected ? 1.8 : isTogo ? 1.4 : 0.5;
+  const stroke = isSelected || isTogo ? '#FFFFFF' : isAfrican ? '#C8C0B5' : '#2A2A2A';
+  const strokeWidth = isSelected ? 2 : isTogo ? 1.5 : 0.5;
 
   return (
     <path
@@ -84,7 +84,7 @@ function CountryFeature({
       stroke={stroke}
       strokeWidth={strokeWidth}
       strokeLinejoin="round"
-      className={isAfrican ? 'transition-colors duration-150' : ''}
+      className={isAfrican ? 'transition-all duration-200 hover:brightness-110' : ''}
       style={{ cursor: isAfrican ? 'pointer' : 'default' }}
       onClick={() => isAfrican && onSelect(id)}
       onMouseEnter={() => isAfrican && onHover(id)}
@@ -108,7 +108,7 @@ export default function AfricaMap({ selectedIso, onSelect }: AfricaMapProps) {
   const [hoveredIso, setHoveredIso] = useState<string | null>(null);
   const [now, setNow] = useState(new Date());
   const containerRef = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(640);
+  const [width, setWidth] = useState(500);
 
   // Horloge : tick chaque seconde
   useEffect(() => {
@@ -116,7 +116,7 @@ export default function AfricaMap({ selectedIso, onSelect }: AfricaMapProps) {
     return () => clearInterval(interval);
   }, []);
 
-  // Largeur responsive
+  // Largeur responsive du conteneur de carte
   useEffect(() => {
     if (!containerRef.current) return;
     const observer = new ResizeObserver((entries) => {
@@ -145,7 +145,7 @@ export default function AfricaMap({ selectedIso, onSelect }: AfricaMapProps) {
       features: africanFeatures,
     };
 
-    const pad = 16;
+    const pad = 12;
     const proj = geoMercator().fitExtent(
       [
         [pad, pad],
@@ -161,7 +161,7 @@ export default function AfricaMap({ selectedIso, onSelect }: AfricaMapProps) {
     return { features: all, pathGen: geoPath(proj) };
   }, [width, height]);
 
-  // Liste des pays africains pour le menu déroulant (triée A → Z en français)
+  // Liste des pays africains triée A → Z en français
   const countryOptions = useMemo(() => {
     const map = new Map<string, string>();
     for (const f of features) {
@@ -184,113 +184,149 @@ export default function AfricaMap({ selectedIso, onSelect }: AfricaMapProps) {
 
   return (
     <div className="w-full">
-      {/* Choix du pays dans la liste */}
-      <div className="mb-4">
-        <label
-          htmlFor="country-select"
-          className="mb-2 block text-sm font-semibold text-ocd-anthracite"
-        >
-          Choisis ton pays
-        </label>
-        <div className="relative">
-          <select
-            id="country-select"
-            value={selectedIso ?? ''}
-            onChange={(e) => {
-              if (e.target.value) onSelect(e.target.value);
-            }}
-            className="w-full appearance-none rounded-xl border border-ocd-line bg-white px-4 py-3 pr-10 text-base font-medium text-ocd-anthracite shadow-sm transition-colors focus:border-ocd-orange focus:outline-none focus:ring-2 focus:ring-ocd-orange/30"
+      {/* Grille principale 2 colonnes sur grand écran */}
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:items-start">
+        
+        {/* Colonne Gauche : La carte interactive (7 colonnes) */}
+        <div className="lg:col-span-7 flex flex-col">
+          <div className="mb-3 flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-ocd-anthracite/60">
+              Carte interactive
+            </span>
+            <span className="text-xs text-ocd-anthracite/50">
+              Survole ou clique sur un pays
+            </span>
+          </div>
+
+          <div
+            ref={containerRef}
+            className="w-full overflow-hidden rounded-3xl bg-[#14171F] p-4 shadow-xl ring-1 ring-black/5"
           >
-            <option value="">Sélectionne un pays…</option>
-            {countryOptions.map((c) => (
-              <option key={c.iso} value={c.iso}>
-                {c.label}
-              </option>
-            ))}
-          </select>
-          <svg
-            className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-ocd-anthracite/60"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            aria-hidden="true"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
+            <svg
+              width={width}
+              height={height}
+              viewBox={`0 0 ${width} ${height}`}
+              className="mx-auto block"
+              role="group"
+              aria-label="Carte de l'Afrique"
+            >
+              {features.map((f: Feature<Geometry, CountryProps>, index: number) => {
+                const id = getFeatureId(f);
+                const isAfrican = isAfricanId(id);
+                const isTogo = id === TOGO_ISO;
+                const isSelected = id !== '' && id === selectedIso;
+                const pathD = pathGen(f) ?? '';
+                const name = getLabel(id, f.properties?.name ?? '');
+                return (
+                  <CountryFeature
+                    key={`${id || 'x'}-${index}`}
+                    id={id}
+                    name={name}
+                    isAfrican={isAfrican}
+                    isTogo={isTogo}
+                    isSelected={isSelected}
+                    pathD={pathD}
+                    onSelect={onSelect}
+                    onHover={setHoveredIso}
+                  />
+                );
+              })}
+            </svg>
+          </div>
         </div>
-      </div>
 
-      <div
-        ref={containerRef}
-        className="w-full overflow-hidden rounded-16 bg-[#1E1E1E]"
-      >
-        <svg
-          width={width}
-          height={height}
-          viewBox={`0 0 ${width} ${height}`}
-          role="group"
-          aria-label="Carte de l'Afrique"
-        >
-          {features.map((f: Feature<Geometry, CountryProps>, index: number) => {
-            const id = getFeatureId(f);
-            const isAfrican = isAfricanId(id);
-            const isTogo = id === TOGO_ISO;
-            const isSelected = id !== '' && id === selectedIso;
-            const pathD = pathGen(f) ?? '';
-            const name = getLabel(id, f.properties?.name ?? '');
-            return (
-              <CountryFeature
-                key={`${id || 'x'}-${index}`}
-                id={id}
-                name={name}
-                isAfrican={isAfrican}
-                isTogo={isTogo}
-                isSelected={isSelected}
-                pathD={pathD}
-                onSelect={onSelect}
-                onHover={setHoveredIso}
-              />
-            );
-          })}
-        </svg>
-      </div>
-
-      {/* Fiche pays */}
-      <div className="mt-4 rounded-16 bg-[#1E1E1E] p-6 text-[#F7F5F2]">
-        {activeName ? (
-          <>
-            <h3 className="text-2xl font-extrabold tracking-tightish text-white">
-              {activeName}
-            </h3>
-            <div className="mt-4 grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs uppercase tracking-wider text-ocd-gold">
-                  Heure locale
-                </p>
-                <p className="font-mono text-lg tabular-nums text-white" aria-live="polite">
-                  {activeIana ? formatCurrentTime(activeIana, now) : '--:--:--'}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-wider text-ocd-gold">
-                  Heure à Lomé
-                </p>
-                <p className="font-mono text-lg tabular-nums text-white" aria-live="polite">
-                  {formatCurrentTime('Africa/Lome', now)}
-                </p>
-              </div>
+        {/* Colonne Droite : Sélection et Fiche Pays (5 colonnes) */}
+        <div className="lg:col-span-5 flex flex-col gap-6">
+          
+          {/* Bloc de sélection par menu déroulant */}
+          <div className="rounded-2xl border border-ocd-line/80 bg-white p-5 shadow-sm">
+            <label
+              htmlFor="country-select"
+              className="mb-2 block text-xs font-bold uppercase tracking-wider text-ocd-anthracite/70"
+            >
+              Choisis ton pays de participation
+            </label>
+            <div className="relative">
+              <select
+                id="country-select"
+                value={selectedIso ?? ''}
+                onChange={(e) => {
+                  if (e.target.value) onSelect(e.target.value);
+                }}
+                className="w-full appearance-none rounded-xl border border-ocd-line bg-ocd-paper/50 px-4 py-3.5 pr-10 text-sm font-semibold text-ocd-anthracite transition-all focus:border-ocd-orange focus:bg-white focus:outline-none focus:ring-2 focus:ring-ocd-orange/20"
+              >
+                <option value="">Sélectionner dans la liste…</option>
+                {countryOptions.map((c) => (
+                  <option key={c.iso} value={c.iso}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+              <svg
+                className="pointer-events-none absolute right-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-ocd-anthracite/50"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                aria-hidden="true"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+              </svg>
             </div>
-            {isTogoActive && (
-              <p className="mt-4 text-sm text-ocd-gold">
-                Le studio OCD Live est ici, à Lomé.
-              </p>
+          </div>
+
+          {/* Fiche Pays Dynamique */}
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1A1E29] to-[#12151B] p-6 text-white shadow-xl ring-1 ring-white/10">
+            {/* Effet lumineux d'ambiance */}
+            <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-ocd-orange/15 blur-2xl" />
+
+            {activeName ? (
+              <div className="relative z-10 flex flex-col gap-5">
+                <div>
+                  <span className="inline-block rounded-full bg-ocd-orange/20 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-ocd-orange">
+                    {selectedIso === activeIso ? 'Pays sélectionné' : 'Survol en cours'}
+                  </span>
+                  <h3 className="mt-2 text-2xl font-black tracking-tight text-white">
+                    {activeName}
+                  </h3>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 border-t border-white/10 pt-4">
+                  <div className="rounded-xl bg-white/5 p-3.5">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-ocd-orange">
+                      Heure locale
+                    </p>
+                    <p className="mt-1 font-mono text-base font-bold tabular-nums text-white" aria-live="polite">
+                      {activeIana ? formatCurrentTime(activeIana, now) : '--:--:--'}
+                    </p>
+                  </div>
+                  <div className="rounded-xl bg-white/5 p-3.5">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-white/50">
+                      Heure à Lomé
+                    </p>
+                    <p className="mt-1 font-mono text-base font-bold tabular-nums text-white" aria-live="polite">
+                      {formatCurrentTime('Africa/Lome', now)}
+                    </p>
+                  </div>
+                </div>
+
+                {isTogoActive && (
+                  <div className="flex items-center gap-2 rounded-xl bg-ocd-orange/10 p-3 text-xs font-medium text-ocd-orange border border-ocd-orange/20">
+                    <span className="flex h-2 w-2 rounded-full bg-ocd-orange animate-ping" />
+                    <span>Le studio OCD Live est basé ici, à Lomé !</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="relative z-10 py-6 text-center">
+                <p className="text-sm font-medium text-white/60">
+                  Sélectionne un pays dans le menu ou clique directement sur la carte pour afficher ses informations.
+                </p>
+              </div>
             )}
-          </>
-        ) : (
-          <p className="text-sm text-ocd-sand">
-            Choisis un pays dans la liste ou touche-le sur la carte.
-          </p>
-        )}
+          </div>
+
+        </div>
+
       </div>
     </div>
   );
