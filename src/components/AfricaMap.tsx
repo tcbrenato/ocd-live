@@ -51,6 +51,12 @@ function getFeatureId(f: Feature<Geometry, CountryProps>): string {
   return ID_FALLBACK_BY_NAME[name] ?? '';
 }
 
+// Nom français si disponible, sinon nom de la carte
+function getLabel(id: string, fallback: string): string {
+  const fr = getCountryNameFR(id);
+  return fr && fr !== id ? fr : fallback || id;
+}
+
 function CountryFeature({
   id,
   name,
@@ -155,13 +161,65 @@ export default function AfricaMap({ selectedIso, onSelect }: AfricaMapProps) {
     return { features: all, pathGen: geoPath(proj) };
   }, [width, height]);
 
+  // Liste des pays africains pour le menu déroulant (triée A → Z en français)
+  const countryOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const f of features) {
+      const id = getFeatureId(f);
+      if (!id || !isAfricanId(id) || map.has(id)) continue;
+      map.set(id, getLabel(id, f.properties?.name ?? ''));
+    }
+    const collator = new Intl.Collator('fr', { sensitivity: 'base' });
+    return Array.from(map, ([iso, label]) => ({ iso, label })).sort((a, b) =>
+      collator.compare(a.label, b.label),
+    );
+  }, [features]);
+
   const activeIso = hoveredIso ?? selectedIso;
   const activeIana = activeIso ? ISO_TO_IANA[activeIso] : null;
-  const activeName = activeIso ? getCountryNameFR(activeIso) : null;
+  const activeName = activeIso
+    ? getLabel(activeIso, countryOptions.find((c) => c.iso === activeIso)?.label ?? '')
+    : null;
   const isTogoActive = activeIso === TOGO_ISO;
 
   return (
     <div className="w-full">
+      {/* Choix du pays dans la liste */}
+      <div className="mb-4">
+        <label
+          htmlFor="country-select"
+          className="mb-2 block text-sm font-semibold text-ocd-anthracite"
+        >
+          Choisis ton pays
+        </label>
+        <div className="relative">
+          <select
+            id="country-select"
+            value={selectedIso ?? ''}
+            onChange={(e) => {
+              if (e.target.value) onSelect(e.target.value);
+            }}
+            className="w-full appearance-none rounded-xl border border-ocd-line bg-white px-4 py-3 pr-10 text-base font-medium text-ocd-anthracite shadow-sm transition-colors focus:border-ocd-orange focus:outline-none focus:ring-2 focus:ring-ocd-orange/30"
+          >
+            <option value="">Sélectionne un pays…</option>
+            {countryOptions.map((c) => (
+              <option key={c.iso} value={c.iso}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+          <svg
+            className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-ocd-anthracite/60"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            aria-hidden="true"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+      </div>
+
       <div
         ref={containerRef}
         className="w-full overflow-hidden rounded-16 bg-[#1E1E1E]"
@@ -179,7 +237,7 @@ export default function AfricaMap({ selectedIso, onSelect }: AfricaMapProps) {
             const isTogo = id === TOGO_ISO;
             const isSelected = id !== '' && id === selectedIso;
             const pathD = pathGen(f) ?? '';
-            const name = f.properties?.name ?? (id ? getCountryNameFR(id) : '');
+            const name = getLabel(id, f.properties?.name ?? '');
             return (
               <CountryFeature
                 key={`${id || 'x'}-${index}`}
@@ -230,7 +288,7 @@ export default function AfricaMap({ selectedIso, onSelect }: AfricaMapProps) {
           </>
         ) : (
           <p className="text-sm text-ocd-sand">
-            Survole ou touche un pays pour l'explorer.
+            Choisis un pays dans la liste ou touche-le sur la carte.
           </p>
         )}
       </div>
