@@ -3,7 +3,7 @@ import { geoMercator, geoPath } from 'd3-geo';
 import { feature } from 'topojson-client';
 import type { Topology } from 'topojson-specification';
 import type { FeatureCollection, Feature, Geometry } from 'geojson';
-import worldData from 'world-atlas/countries-110m.json';
+import worldData from 'world-atlas/countries-50m.json';
 import { AFRICAN_ISO_SET, ISO_TO_IANA, TOGO_ISO } from '@/data/countries';
 import { getCountryNameFR, formatCurrentTime } from '@/utils/format';
 
@@ -25,12 +25,24 @@ interface CountryFeatureProps {
 
 type CountryProps = { name?: string };
 
-// Territoires sans identifiant dans la carte du monde : on les rattache à leur pays
+// Les 54 pays africains + Sahara occidental (codes numériques ISO)
+const AFRICA_IDS = new Set([
+  '012', '024', '204', '072', '854', '108', '132', '120', '140', '148',
+  '174', '178', '180', '384', '262', '818', '226', '232', '748', '231',
+  '266', '270', '288', '324', '624', '404', '426', '430', '434', '450',
+  '454', '466', '478', '480', '504', '508', '516', '562', '566', '646',
+  '678', '686', '690', '694', '706', '710', '728', '729', '834', '768',
+  '788', '800', '894', '716', '732',
+]);
+
+const isAfricanId = (id: string) => AFRICA_IDS.has(id) || AFRICAN_ISO_SET.has(id);
+
+// Territoires sans identifiant dans la carte du monde
 const ID_FALLBACK_BY_NAME: Record<string, string> = {
   Somaliland: '706', // fait partie de la Somalie
 };
 
-// Antarctique : masqué (tracés énormes qui faussent la carte)
+// Antarctique : masqué
 const HIDDEN_IDS = new Set(['010']);
 
 function getFeatureId(f: Feature<Geometry, CountryProps>): string {
@@ -57,7 +69,7 @@ function CountryFeature({
   if (isSelected) fill = '#FF8226'; // sélectionné
 
   const stroke = isSelected || isTogo ? '#FFFFFF' : isAfrican ? '#3A3A3A' : '#333333';
-  const strokeWidth = isSelected ? 1.8 : isTogo ? 1.4 : 0.4;
+  const strokeWidth = isSelected ? 1.8 : isTogo ? 1.4 : 0.5;
 
   return (
     <path
@@ -112,7 +124,6 @@ export default function AfricaMap({ selectedIso, onSelect }: AfricaMapProps) {
 
   const height = Math.round(width * 1.05);
 
-  // Préparation des pays et du générateur de chemins SVG
   const { features, pathGen } = useMemo(() => {
     const topo = worldData as unknown as Topology;
     const fc = feature(topo, topo.objects.countries) as unknown as FeatureCollection<
@@ -122,8 +133,7 @@ export default function AfricaMap({ selectedIso, onSelect }: AfricaMapProps) {
 
     const all = fc.features.filter((f) => !HIDDEN_IDS.has(getFeatureId(f)));
 
-    // La projection est ajustée à l'Afrique entière
-    const africanFeatures = all.filter((f) => AFRICAN_ISO_SET.has(getFeatureId(f)));
+    const africanFeatures = all.filter((f) => isAfricanId(getFeatureId(f)));
     const collection: FeatureCollection<Geometry, CountryProps> = {
       type: 'FeatureCollection',
       features: africanFeatures,
@@ -137,7 +147,6 @@ export default function AfricaMap({ selectedIso, onSelect }: AfricaMapProps) {
       ],
       collection,
     );
-    // Découpe proprement les pays voisins aux bords du cadre
     proj.clipExtent([
       [0, 0],
       [width, height],
@@ -166,7 +175,7 @@ export default function AfricaMap({ selectedIso, onSelect }: AfricaMapProps) {
         >
           {features.map((f: Feature<Geometry, CountryProps>, index: number) => {
             const id = getFeatureId(f);
-            const isAfrican = AFRICAN_ISO_SET.has(id);
+            const isAfrican = isAfricanId(id);
             const isTogo = id === TOGO_ISO;
             const isSelected = id !== '' && id === selectedIso;
             const pathD = pathGen(f) ?? '';
