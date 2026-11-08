@@ -23,6 +23,22 @@ interface CountryFeatureProps {
   onHover: (iso: string | null) => void;
 }
 
+type CountryProps = { name?: string };
+
+// Territoires sans identifiant dans la carte du monde : on les rattache à leur pays
+const ID_FALLBACK_BY_NAME: Record<string, string> = {
+  Somaliland: '706', // fait partie de la Somalie
+};
+
+// Antarctique : masqué (tracés énormes qui faussent la carte)
+const HIDDEN_IDS = new Set(['010']);
+
+function getFeatureId(f: Feature<Geometry, CountryProps>): string {
+  if (f.id !== undefined && f.id !== null) return String(f.id);
+  const name = f.properties?.name ?? '';
+  return ID_FALLBACK_BY_NAME[name] ?? '';
+}
+
 function CountryFeature({
   id,
   name,
@@ -49,6 +65,7 @@ function CountryFeature({
       fill={fill}
       stroke={stroke}
       strokeWidth={strokeWidth}
+      strokeLinejoin="round"
       className={isAfrican ? 'transition-colors duration-150' : ''}
       style={{ cursor: isAfrican ? 'pointer' : 'default' }}
       onClick={() => isAfrican && onSelect(id)}
@@ -75,7 +92,7 @@ export default function AfricaMap({ selectedIso, onSelect }: AfricaMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(640);
 
-  // Tick horloge chaque seconde
+  // Horloge : tick chaque seconde
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(interval);
@@ -86,55 +103,59 @@ export default function AfricaMap({ selectedIso, onSelect }: AfricaMapProps) {
     if (!containerRef.current) return;
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        setWidth(entry.contentRect.width);
+        if (entry.contentRect.width > 0) setWidth(entry.contentRect.width);
       }
     });
     observer.observe(containerRef.current);
     return () => observer.disconnect();
   }, []);
 
-  // Préparation des features et du générateur de chemins SVG
+  const height = Math.round(width * 1.05);
+
+  // Préparation des pays et du générateur de chemins SVG
   const { features, pathGen } = useMemo(() => {
     const topo = worldData as unknown as Topology;
     const fc = feature(topo, topo.objects.countries) as unknown as FeatureCollection<
       Geometry,
-      { name?: string }
+      CountryProps
     >;
 
-    // Projection Mercator ajustée à l'Afrique
-    const africanFeatures = fc.features.filter((f) =>
-      AFRICAN_ISO_SET.has(String(f.id)),
-    );
-    const collection: FeatureCollection<Geometry, { name?: string }> = {
+    const all = fc.features.filter((f) => !HIDDEN_IDS.has(getFeatureId(f)));
+
+    // La projection est ajustée à l'Afrique entière
+    const africanFeatures = all.filter((f) => AFRICAN_ISO_SET.has(getFeatureId(f)));
+    const collection: FeatureCollection<Geometry, CountryProps> = {
       type: 'FeatureCollection',
       features: africanFeatures,
     };
 
+    const pad = 16;
     const proj = geoMercator().fitExtent(
       [
-        [20, 20],
-        [width - 20, width * 0.95],
+        [pad, pad],
+        [width - pad, height - pad],
       ],
       collection,
     );
-    const path = geoPath(proj);
+    // Découpe proprement les pays voisins aux bords du cadre
+    proj.clipExtent([
+      [0, 0],
+      [width, height],
+    ]);
 
-    return { features: fc.features, pathGen: path };
-  }, [width]);
+    return { features: all, pathGen: geoPath(proj) };
+  }, [width, height]);
 
   const activeIso = hoveredIso ?? selectedIso;
   const activeIana = activeIso ? ISO_TO_IANA[activeIso] : null;
   const activeName = activeIso ? getCountryNameFR(activeIso) : null;
   const isTogoActive = activeIso === TOGO_ISO;
 
-  const height = width * 0.95;
-
   return (
     <div className="w-full">
       <div
         ref={containerRef}
-        className="w-full overflow-hidden rounded-16"
-        style={{ background: '#1E1E1E' }}
+        className="w-full overflow-hidden rounded-16 bg-[#1E1E1E]"
       >
         <svg
           width={width}
@@ -143,16 +164,16 @@ export default function AfricaMap({ selectedIso, onSelect }: AfricaMapProps) {
           role="group"
           aria-label="Carte de l'Afrique"
         >
-          {features.map((f: Feature<Geometry, { name?: string }>) => {
-            const id = String(f.id);
+          {features.map((f: Feature<Geometry, CountryProps>, index: number) => {
+            const id = getFeatureId(f);
             const isAfrican = AFRICAN_ISO_SET.has(id);
             const isTogo = id === TOGO_ISO;
-            const isSelected = id === selectedIso;
+            const isSelected = id !== '' && id === selectedIso;
             const pathD = pathGen(f) ?? '';
-            const name = f.properties?.name ?? getCountryNameFR(id);
+            const name = f.properties?.name ?? (id ? getCountryNameFR(id) : '');
             return (
               <CountryFeature
-                key={id}
+                key={`${id || 'x'}-${index}`}
                 id={id}
                 name={name}
                 isAfrican={isAfrican}
@@ -168,10 +189,7 @@ export default function AfricaMap({ selectedIso, onSelect }: AfricaMapProps) {
       </div>
 
       {/* Fiche pays */}
-      <div
-        className="mt-4 rounded-16 p-6"
-        style={{ background: '#1E1E1E', color: '#F7F5F2' }}
-      >
+      <div className="mt-4 rounded-16 bg-[#1E1E1E] p-6 text-[#F7F5F2]">
         {activeName ? (
           <>
             <h3 className="text-2xl font-extrabold tracking-tightish text-white">
@@ -182,10 +200,7 @@ export default function AfricaMap({ selectedIso, onSelect }: AfricaMapProps) {
                 <p className="text-xs uppercase tracking-wider text-ocd-gold">
                   Heure locale
                 </p>
-                <p
-                  className="font-mono text-lg tabular-nums text-white"
-                  aria-live="polite"
-                >
+                <p className="font-mono text-lg tabular-nums text-white" aria-live="polite">
                   {activeIana ? formatCurrentTime(activeIana, now) : '--:--:--'}
                 </p>
               </div>
@@ -193,10 +208,7 @@ export default function AfricaMap({ selectedIso, onSelect }: AfricaMapProps) {
                 <p className="text-xs uppercase tracking-wider text-ocd-gold">
                   Heure à Lomé
                 </p>
-                <p
-                  className="font-mono text-lg tabular-nums text-white"
-                  aria-live="polite"
-                >
+                <p className="font-mono text-lg tabular-nums text-white" aria-live="polite">
                   {formatCurrentTime('Africa/Lome', now)}
                 </p>
               </div>
