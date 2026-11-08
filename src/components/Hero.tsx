@@ -8,10 +8,11 @@ function LogoBlock() {
   return (
     <div className="flex h-full w-full items-center justify-center rounded-16 bg-ocd-paper p-8">
       <div className="flex flex-col items-center gap-6 text-center">
-        <div className="flex items-center justify-center text-5xl font-extrabold tracking-tightish sm:text-6xl md:text-7xl">
-          <span className="text-ocd-orange">OCD</span>
-          <span className="text-ocd-anthracite">Live</span>
-        </div>
+        <img
+          src="/logoocd.jpg"
+          alt="Logo OCD Live"
+          className="h-40 w-auto max-w-full object-contain sm:h-52 md:h-64"
+        />
         <div className="h-px w-24 bg-ocd-line" />
         <p className="max-w-xs text-sm text-ocd-anthracite/60">
           Opportunités C'est Dehors
