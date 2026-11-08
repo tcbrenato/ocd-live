@@ -1,5 +1,4 @@
 import type { LiveFormat } from '@/data/types';
-import Image from 'next/image';
 
 interface HeroProps {
   onChooseFormat: (format: LiveFormat) => void;
@@ -13,7 +12,6 @@ function LogoBlock() {
       <div className="pointer-events-none absolute -bottom-16 -left-16 h-64 w-64 rounded-full bg-ocd-anthracite/5 blur-3xl" />
 
       <div className="relative z-10 flex flex-col items-center text-center">
-        {/* Conteneur d'image avec ombre portée et bordure discrète */}
         <div className="group relative flex items-center justify-center rounded-2xl bg-white p-6 shadow-md shadow-black/5 ring-1 ring-black/5 transition-transform duration-300 hover:scale-[1.02]">
           <img
             src="/logoocd.jpg"
@@ -36,11 +34,9 @@ export default function Hero({ onChooseFormat }: HeroProps) {
   return (
     <section id="accueil" className="relative overflow-hidden border-b border-ocd-line bg-white">
       <div className="mx-auto grid max-w-6xl grid-cols-1 gap-12 px-5 pb-20 pt-12 sm:px-8 lg:grid-cols-2 lg:gap-16 lg:pb-28 lg:pt-20">
-        
-        {/* Colonne gauche : Message principal et CTAs */}
+        {/* Colonne gauche */}
         <div className="flex flex-col justify-between">
           <div>
-            {/* Pill Badge */}
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-ocd-orange/20 bg-ocd-orange/10 px-3.5 py-1.5">
               <span className="relative flex h-2 w-2">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-ocd-orange opacity-75"></span>
@@ -56,13 +52,13 @@ export default function Hero({ onChooseFormat }: HeroProps) {
             </h1>
 
             <p className="mt-6 max-w-lg text-lg leading-relaxed text-ocd-anthracite/75">
-              Réserve un créneau de <strong className="font-semibold text-ocd-anthracite">1h30</strong> et présente directement ton produit à la communauté OCD.
+              Réserve un créneau de{' '}
+              <strong className="font-semibold text-ocd-anthracite">1h30</strong> et présente
+              directement ton produit à la communauté OCD.
             </p>
           </div>
 
-          {/* Cartes d'action / Sélection du format */}
           <div className="mt-10 flex flex-col gap-4 sm:flex-row">
-            {/* Bouton Sur place */}
             <button
               type="button"
               onClick={() => onChooseFormat('onplace')}
@@ -81,13 +77,18 @@ export default function Hero({ onChooseFormat }: HeroProps) {
               </div>
               <div className="mt-6 flex items-center text-xs font-bold uppercase tracking-wider text-ocd-anthracite">
                 <span>Sélectionner</span>
-                <svg className="ml-2 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg
+                  className="ml-2 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  aria-hidden="true"
+                >
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                 </svg>
               </div>
             </button>
 
-            {/* Bouton À distance */}
             <button
               type="button"
               onClick={() => onChooseFormat('remote')}
@@ -97,16 +98,20 @@ export default function Hero({ onChooseFormat }: HeroProps) {
                 <span className="inline-block text-xs font-bold uppercase tracking-wider text-white/50">
                   Option 02
                 </span>
-                <h3 className="mt-1 text-xl font-extrabold text-white">
-                  À distance
-                </h3>
+                <h3 className="mt-1 text-xl font-extrabold text-white">À distance</h3>
                 <p className="mt-1 text-sm font-medium text-white/70">
                   Depuis ton pays ou chez toi
                 </p>
               </div>
               <div className="mt-6 flex items-center text-xs font-bold uppercase tracking-wider text-ocd-orange">
                 <span>Sélectionner</span>
-                <svg className="ml-2 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg
+                  className="ml-2 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  aria-hidden="true"
+                >
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                 </svg>
               </div>
@@ -114,9 +119,8 @@ export default function Hero({ onChooseFormat }: HeroProps) {
           </div>
         </div>
 
-        {/* Colonne droite : Blocs visuels du Logo */}
+        {/* Colonne droite */}
         <LogoBlock />
-        
       </div>
     </section>
   );
