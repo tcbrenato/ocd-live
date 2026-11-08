@@ -1,8 +1,3 @@
-import Image from 'next/image';
-
-// Pour utiliser l'image importée comme source, vous devez l'avoir dans votre dossier public/ (ex: public/logoocd.jpg)
-import logoOcd from './public/logoocd.jpg'; 
-
 export default function Header() {
   return (
     <header className="border-b border-ocd-line bg-white">
@@ -15,14 +10,12 @@ export default function Header() {
           className="flex items-center gap-3 text-2xl font-extrabold tracking-tightish"
           aria-label="OCD Live — accueil"
         >
-          {/* Logo remplacé par l'image */}
-          <Image 
-            src={logoOcd} 
-            alt="Logo OCD" 
-            width={40} // Ajustez la largeur selon vos besoins
-            height={40} // Ajustez la hauteur selon vos besoins
-            priority // Chargez le logo en priorité car c'est un élément clé
-            className="h-10 w-auto" // Classe Tailwind pour contrôler la taille
+          <img
+            src="/logoocd.jpg"
+            alt="Logo OCD"
+            width={40}
+            height={40}
+            className="h-10 w-auto"
           />
           <span className="text-ocd-anthracite">Live</span>
         </a>
