@@ -1,8 +1,8 @@
 export default function Header() {
   return (
-    <header className="border-b border-ocd-line bg-white">
+    <header className="sticky top-0 z-50 border-b border-ocd-line bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
       <nav
-        className="mx-auto flex max-w-6xl items-center justify-between px-5 py-5 sm:px-8"
+        className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4 sm:px-8"
         aria-label="Navigation principale"
       >
         <a
@@ -19,9 +19,10 @@ export default function Header() {
           />
           <span className="text-ocd-anthracite">Live</span>
         </a>
+
         <a
           href="#reservation"
-          className="hidden text-sm font-semibold text-ocd-orange-dark transition-colors hover:text-ocd-orange sm:block"
+          className="inline-flex items-center rounded-full bg-ocd-orange px-5 py-2 text-sm font-semibold text-ocd-anthracite transition-colors hover:bg-ocd-orange-dark hover:text-white"
         >
           Réserver
         </a>
